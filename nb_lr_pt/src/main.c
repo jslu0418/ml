@@ -10,14 +10,15 @@ struct sl_docs_entry{
   ptr_doc p_doc;
 };
 
-#define NB /* enable NB */
-#define LR /* enable LR */
+//#define NB /* enable NB */
+#define APT
+//#define LR /* enable LR */
 #define PT /* enable PT */
 
 #define ETA 0.1
 #define NUMLOOP 1
 #define LAMBDA 0.00001
-#define BESTLOOP 13
+#define BESTLOOP 200
 
 int
 main (int argc, char **argv)
@@ -96,9 +97,16 @@ main (int argc, char **argv)
       p_test_class_docs[j]->len = i;
     }
 
+#ifdef APT
+  int Ka[]={1,2,5,10,20,50,100,200,500,1000,2000,5000,10000,15000,20000};
+  int bestKa = 1;
+  int K,T;
+#endif /* APT */
+
   /* train nb */
   ptr_ret_train_nb ret =  train_multinomial_nb(classes, p_class_docs);
 #ifdef NB
+  printf("#######Naïve Bayes Start#######\n");
   int max_class;
   int correct_case_num = 0;
   int total_case_num = 0;
@@ -112,9 +120,57 @@ main (int argc, char **argv)
             correct_case_num++;
         }
     }
-  printf("Accuracy of NaiveBayes with Laplace smoothing: %lf\n", (double) correct_case_num/ (double) total_case_num);
+  printf("Accuracy of NaïveBayes with Laplace smoothing: %lf\n", (double) correct_case_num/ (double) total_case_num);
   free(ret->condprobs);
+#ifdef APT
+  printf("####With Automatic Parameters Tying####\n");
+  ptr_ret_train_nb ret_apt;
+  bestKa = 1;
+  int max_correct_case_num = -1;
+  int c;
+  for(c=0;c<15;c++)
+    {
+      ret_apt = apt_train_multinomial_nb(classes, p_class_docs, Ka[c], 0.7);
+      correct_case_num = 0;
+      total_case_num = 0;
+      for(j=0; j<2; j++)
+        {
+          total_case_num += p_class_docs[j]->len - p_class_docs[j]->len * 0.7;
+          for(i=p_class_docs[j]->len*0.7; i<p_class_docs[j]->len; i++)
+            {
+              max_class = apply_multinomial_nb(classes, ret_apt->priors, ret_apt->aptcondprobs, p_class_docs[j]->docs[i], ret_apt->htab_vocab);
+              if (max_class == j)
+                correct_case_num++;
+            }
+
+        }
+      printf("## Auc of NaïveBayes with APT K:%d on valid set: %lf\n", Ka[c], (double) correct_case_num/ (double) total_case_num);
+      if(correct_case_num>max_correct_case_num)
+        {
+          bestKa = Ka[c];
+          max_correct_case_num = correct_case_num;
+        }
+    }
+  printf("### Best Accuracy of NaïveBayes with APT K:%d on valid set: %lf\n", bestKa, (double) max_correct_case_num/ (double) total_case_num);
+
+  ret_apt = apt_train_multinomial_nb(classes, p_class_docs, bestKa, 1.0);
+  correct_case_num = 0;
+  total_case_num = 0;
+  for(j=0; j<2; j++)
+    {
+      total_case_num += p_test_class_docs[j]->len;
+      for(i=0; i<p_test_class_docs[j]->len; i++)
+        {
+          max_class = apply_multinomial_nb(classes, ret_apt->priors, ret_apt->aptcondprobs, p_test_class_docs[j]->docs[i], ret_apt->htab_vocab);
+          if (max_class == j)
+            correct_case_num++;
+        }
+    }
+  printf("Accuracy of NaïveBayes with Laplace smoothing and APT K:%d on test set: %lf\n", bestKa, (double) correct_case_num/ (double) total_case_num);
+  free(ret->aptcondprobs);
+#endif /* APT */
   free(ret->priors);
+  printf("#######Naïve Bayes End#######\n");
 #endif /* NB */
 
   /* prepare example vectors for LR and perceptron */
@@ -212,27 +268,57 @@ main (int argc, char **argv)
   double lambda;
   double eta = ETA;
   ptr_ret_train_lr p_ret_lr;
+#ifdef LR
+  printf("#######Logistic Regression Start#######\n");
   /* for select lambda */
   for(i=-5;i<1;i++)
     {
       lambda = pow(10.0, i);
-      p_ret_lr = train_mcap_logistic_regression (train_indices, train_len[0] + train_len[1], feature_size, eta, lambda);
+      p_ret_lr = train_mcap_logistic_regression (train_indices, train_len[0] + train_len[1], feature_size, eta, lambda, valid_indices, valid_len[0]+valid_len[1]);
       cur_auc = valid_auc(p_ret_lr->weights, valid_indices, valid_len[0]+valid_len[1], feature_size);
-      //printf("Accuracy:%lf of lambda:%lf on valid set\n", cur_auc, lambda);
-      if(best_auc < cur_auc)
+      printf("## Auc of lambda:%lf on valid set: %lf\n", lambda, cur_auc);
+      if(best_auc <= cur_auc)
         {
           best_auc = cur_auc;
           best_lambda = lambda;
         }
     }
-  printf("### Best Accuracy:%lf of best lambda:%lf on valid set\n", best_auc, best_lambda);
+  printf("### Best Accuracy best lambda:%lf on valid set: %lf\n", best_lambda, best_auc);
 
   /* use best lambda to train whole training set */
 
-#ifdef LR
-  p_ret_lr = train_mcap_logistic_regression (train_indices, p_class_docs[0]->len+p_class_docs[1]->len, feature_size, eta, best_lambda);
+  //  p_ret_lr = train_mcap_logistic_regression (train_indices, p_class_docs[0]->len+p_class_docs[1]->len, feature_size, eta, best_lambda);
   cur_auc = valid_auc(p_ret_lr->weights, test_indices, p_test_class_docs[0]->len+p_test_class_docs[1]->len, feature_size);
-  printf("Accuracy of LogisticRegression with lambda %lf and eta %lf: %lf\n", best_lambda, eta, cur_auc);
+  printf("Accuracy of LogisticRegression with lambda %lf and eta %lf on test set: %lf\n", best_lambda, eta, cur_auc);
+
+#ifdef APT
+  printf("####With Automatic Parameters Tying####\n");
+  /* for select lambda and K */
+  T=10000;
+  eta = 0.1;
+  best_auc = 0.0;
+  j=1;
+  i=-5;
+  /* for(j=1;j<513;j*=2) */
+  /*   for(i=-5;i<1;i++) */
+  /*      { */
+        lambda = pow(10.0, i);
+        p_ret_lr = apt_train_mcap_logistic_regression (train_indices, train_len[0] + train_len[1], feature_size, eta, lambda, j, T);
+        cur_auc = valid_auc(p_ret_lr->weights, valid_indices, valid_len[0]+valid_len[1], feature_size);
+        printf("Accuracy:%lf of lambda:%lf and K:%d LR_APT on valid set\n", cur_auc, lambda, j);
+        if(best_auc <= cur_auc)
+          {
+            best_auc = cur_auc;
+            best_lambda = lambda;
+            K = j;
+          }
+       /* } */
+  printf("### Best Accuracy:%lf of best lambda:%lf and best K:%d on valid set\n", best_auc, best_lambda, K);
+  p_ret_lr = apt_train_mcap_logistic_regression (train_indices, p_class_docs[0]->len+p_class_docs[1]->len, feature_size, eta, best_lambda, K, T);
+  cur_auc = valid_auc(p_ret_lr->weights, test_indices, p_test_class_docs[0]->len+p_test_class_docs[1]->len, feature_size);
+  printf("Accuracy of LogisticRegression with lambda %lf , K %d and eta %lf: %lf\n", best_lambda, K, eta, cur_auc);
+#endif /* APT */
+  printf("#######Logistic Regression End#######\n");
 #endif /* LR */
 
   int best_loop;
@@ -242,6 +328,7 @@ main (int argc, char **argv)
   /* initialize weights */
 
 #ifdef PT
+  printf("#######Perceptron Start#######\n");
   double *weights = calloc(feature_size, sizeof(double));
   for(i=0; i<feature_size; i++)
     {
@@ -265,6 +352,41 @@ main (int argc, char **argv)
   train_perceptrons(train_indices, p_class_docs[0]->len+p_class_docs[1]->len, feature_size, eta, best_loop, weights);
   cur_auc = perceptron_valid_auc(weights, test_indices, p_test_class_docs[0]->len+p_test_class_docs[1]->len, feature_size);
   printf("Accuracy of Perceptron with iterations %d and eta %lf: %lf\n", best_loop, eta, cur_auc);
+
+#ifdef APT
+  printf("####With Automatic Parameters Tying####\n");
+  T = train_len[0]+train_len[1]; /* one iteration */
+  eta = 0.1;
+  best_auc = 0.0;
+  j=1;
+  i=-5;
+  //best_loop = 1;
+  for(j=0;j<13;j++)
+    for(i=-5;i<-4;i++)
+      for(k=1;k<=20;k+=2)
+      {
+        for(l=0; l<feature_size; l++)
+          {
+            weights[l] = 0.0;
+          }
+        lambda = pow(10.0, i);
+        apt_train_perceptrons(train_indices, train_len[0]+train_len[1], feature_size, eta, best_loop, weights, lambda, Ka[j], T * k);
+        cur_auc = perceptron_valid_auc(weights, valid_indices, valid_len[0] + valid_len[1], feature_size);
+        printf("Accuracy:%lf of lambda:%lf, interation: %d, and K:%d LR_APT on valid set\n", cur_auc, lambda, k, Ka[j]);
+        if(best_auc <= cur_auc)
+          {
+            best_auc = cur_auc;
+            best_lambda = lambda;
+            K = Ka[j];
+            best_loop = k;
+          }
+      }
+  printf("### Best Accuracy:%lf of best lambda:%lf, iteration: %d, and best K:%d on valid set\n", best_auc, best_lambda, best_loop, K);
+  apt_train_perceptrons(train_indices, p_class_docs[0]->len+p_class_docs[1]->len, feature_size, eta, best_loop, weights, best_lambda, Ka[j], T * k);
+  cur_auc = perceptron_valid_auc(weights, test_indices, p_test_class_docs[0]->len + p_test_class_docs[1]->len, feature_size);
+  printf("Accuracy of Perceptron with iterations %d, lambda:%lf, APT K:%d, and eta %lf: %lf\n", best_loop, best_lambda, K, eta, cur_auc);
+#endif /* APT */
+  printf("#######Perceptron End#######\n");
 #endif /* PT */
   return 0;
 }

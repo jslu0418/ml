@@ -18,8 +18,11 @@ train_mcap_logistic_regression(int **train_indices, int size, int feature_size, 
       weights[i] = 0.0;
     }
 
-  gradient_descent(weights, train_indices, size, eta, lambda, feature_size);
-  //printf("Auc: %lf of iteration:%d\n", valid_auc(weights, valid_indices, vsize, feature_size), i * LRNUMLOOP);
+  /* for(i=0; i<LRNUMLOOP;i++) */
+  /*   { */
+      gradient_descent(weights, train_indices, size, eta, lambda, feature_size);
+      /* printf("Auc: %lf of iteration:%d\n", valid_auc(weights, valid_indices, vsize, feature_size), i); */
+    /* } */
   p_ret->weights = weights;
   return p_ret;
 }
@@ -90,7 +93,7 @@ valid_auc(double *weights, int **valid_indices, int valid_size, int feature_size
             l+=1.0;
         }
     }
-  // printf("correct case, %lf\n", l);
+  /* printf("correct case, %lf\n", l); */
   return l/valid_size;
 }
 
@@ -135,19 +138,34 @@ apt_train_mcap_logistic_regression(int **train_indices, int size, int feature_si
 }
 
 int
-apt_update_weights(double *weights, int *indices, double eta, double lambda, int feature_size, int K, int T, int *a, double *u)
+apt_update_weights(double *weights, int **all_indices, int size, double eta, double lambda, int feature_size, int K, int T, int *a, double *u, int ii)
 {
-  double sum = indices[feature_size] - sigmoid(wtimesx(weights, indices, feature_size));
-  int j;
-  int i = 1;
+  /* int j; */
+  /* double sum = all_indices[ii][feature_size] - sigmoid(wtimesx(weights, all_indices[ii], feature_size)); */
   double delta;
+  int cont = 0;
+  int i,j;
+  double sum[size]; /* Y-P(Y=1|X,W) */
+  for(i=0; i<size; i++)
+    {
+      sum[i] = all_indices[i][feature_size] - sigmoid(wtimesx(weights, all_indices[i], feature_size));
+    }
+  /* sum SUM(X_i * (Y-P(Y=1|X,W))) - lambda * W_i + lambda * U_i*/
   for(j=0;j<feature_size;j++)
     {
-      delta = sum * indices[j] - lambda*weights[j] + lambda*u[a[j]];
-      i = delta == 0.0?i:0;
-      weights[j] += eta * delta;
+      /* update every weights */
+      delta = 0.0;
+      for(i=0; i<size; i++)
+        {
+          delta += all_indices[i][j] * sum[i];
+        }
+      /* delta += all_indices[ii][j] * sum; */
+      delta -= lambda * weights[j] - lambda * u[a[j]];
+      cont = delta==0.0?cont:1; /* if a weights delta is not 0.0, cont */
+      weights[j] += delta * eta;
+      //  printf("weights[%d].delta: %lf | weights %lf \n", j, delta[j], weights[j]);
     }
-  return i;
+  return cont;
 }
 
 int
@@ -220,13 +238,13 @@ automatic_parameter_tying(double *weights, int **all_indices, int size, double e
   int k=0,l=0,m;
   int i=0,j;
   double tu[K]; /* for tmp record */
+  double mag;
   while(k<=T)
     {
       l = 0;
-      if(apt_update_weights(weights, all_indices[i], eta, lambda, feature_size, K, T, a, u)!=0)
-        break;
+      apt_update_weights(weights, all_indices, size, eta, lambda, feature_size, K, T, a, u, i);
       init_center(weights, feature_size, K, a, u);
-      while(l<10)
+      while(l<50)
         {
           m = 0;
           reassignment(weights, feature_size, K, a, u);
@@ -235,7 +253,9 @@ automatic_parameter_tying(double *weights, int **all_indices, int size, double e
           init_center(weights, feature_size, K, a, u);
           for(j=0;j<K;j++)
             {
-              if(tu[j]!=u[j])
+              mag = tu[j]-u[j]<0.0?u[j]-tu[j]:tu[j]-u[j];
+              if(mag>0.00001)
+                if((mag/u[j]>0.01&&u[j]>=0.0)||(mag/u[j]<-0.01&&u[j]<=0.0))
                 {
                   m = 1;
                   break;
@@ -245,13 +265,11 @@ automatic_parameter_tying(double *weights, int **all_indices, int size, double e
             break;
           l++;
         }
-      //  printf("K-means times: %d\n", l);
-      for(j=0;j<K;j++)
-        u[j]=tu[j];
+      /* printf("K-means times: %d\n", l); */
       k++;
       i++;
       i=i>=size?0:i;
     }
-  printf("Iteration times: %d\n", k);
+  /* printf("Iteration times: %d\n", k-1); */
   return 0;
 }

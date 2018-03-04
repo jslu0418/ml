@@ -296,6 +296,7 @@ nb_automatic_parameter_tying(double **condprobs, int num_classes, int vocab_size
   int *a = calloc(vocab_size, sizeof(int));
   int i,j,k,l,m;
   double tu[K];
+  double mag;
   srand(time(NULL));
   for(k=0;k<num_classes;k++)
     {
@@ -312,8 +313,10 @@ nb_automatic_parameter_tying(double **condprobs, int num_classes, int vocab_size
           nb_init_center(condprobs, k, vocab_size, a, uprobs, K);
           for(j=0;j<K;j++)
             {
-              if(tu[j]!=uprobs[j])
+              mag = tu[j]-uprobs[j]<0.0?uprobs[j]-tu[j]:tu[j]-uprobs[j]-tu[j];
+              if(mag>0.0000001)
                 {
+                  /* printf("%lf,%lf,%lf\n", tu[j], uprobs[j], mag); */
                   m = 1;
                   break;
                 }
@@ -322,6 +325,7 @@ nb_automatic_parameter_tying(double **condprobs, int num_classes, int vocab_size
             break;
           l++;
         }
+      /* printf("Kmeans time:%d\n", l); */
       for(j=0;j<vocab_size;j++)
         {
           aptcondprobs[j][k] = uprobs[a[j]];

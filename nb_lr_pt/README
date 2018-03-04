@@ -1,0 +1,8 @@
+# README for Homework1 of CS6375.502
+# In the root directory of Homework1, use "./configure;make -k" to compile
+./configure;make -k
+# Then, run the program by using following instructions
+src/main data_sets/hw2
+src/main data_sets/enron1
+src/main data_sets/enron4
+# src/main data_sets/hw2 5

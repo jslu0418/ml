@@ -13,6 +13,7 @@ typedef struct ret_train_nb{
   struct hsearch_data htab_vocab;
   double *priors;
   double **condprobs;
+  double **aptcondprobs;
   int size_vocab;
   int size_prior;
 
@@ -20,6 +21,7 @@ typedef struct ret_train_nb{
 
 ptr_ret_train_nb train_multinomial_nb (char** classes, ptr_class_docs *docs);
 int apply_multinomial_nb(char **classes, double *priors, double **condprob, ptr_doc p_doc, struct hsearch_data htab_vocab);
+ptr_ret_train_nb apt_train_multinomial_nb (char** classes, ptr_class_docs *docs, int K, double pct);
 
 
 #endif /* NAIVE_BAYES_H */

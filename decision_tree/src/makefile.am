@@ -1,0 +1,7 @@
+noinst_LIBRARIES = libarray.a
+libarray_a_SOURCES = array.c
+AM_CPPFLAGS = "-I$(top_builddir)/include"
+bin_PROGRAMS = main
+main_SOURCES = main.c decision_tree.c decision_tree.h
+
+main_LDADD = libarray.a -lm

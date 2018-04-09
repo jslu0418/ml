@@ -1,0 +1,9 @@
+# README for Homework1 of CS6375.502
+# In the root directory of Homework1, use "./configure;make -k" to compile
+./configure
+make -k
+# Then, run the program by using following instructions
+src/main 100 15 data_sets1/training_set.csv data_sets1/validation_set.csv data_sets1/test_set.csv no
+src/main 100 15 data_sets1/training_set.csv data_sets1/validation_set.csv data_sets1/test_set.csv yes
+src/main 100 15 data_sets2/training_set.csv data_sets2/validation_set.csv data_sets2/test_set.csv no
+src/main 100 15 data_sets2/training_set.csv data_sets2/validation_set.csv data_sets2/test_set.csv yes

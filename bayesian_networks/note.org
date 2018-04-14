@@ -1,0 +1,99 @@
+#+TITLE: BAYESIAN NETWORKS
+#+OPTIONS: tex:t
+
+* Independent Bayesian Networks
+
+\(LL(\theta , D) = \sum^n_i{\#(X_i|D)\times Log(P(x_i|D))}\)
+
+\(Argmax\quad(LL(\theta, D)) = Argmax\quad\sum^n_i{\#(X_i|D)\times Log(P(X_i|D))}\)
+
+\(\frac{\partial{LL(\theta, D)}}{\partial(P(X_i|D))} = \#(X_i=1)\times \frac{1}{P(X_i=1|D)} - \#(X_i=0)\times \frac{1}{1-P(X_i=1|D)}\)
+
+\(Argmax_{P(X_i=1|D)}\quad(LL(\theta, D)) = \frac{\#(X_i=1|D)}{\#(X_i=1|D)+\#(X_i=0|D)}\)
+
+* Chow-liu Tree Bayesian Networks
+\(P(X_i=x_i,Pa(X_i)=pa(x_i)) = \frac{\#(X_i=x_i, Pa(X_i)=pa(x_i))}{\sum_D{\#(X_i, Pa(X_i))}}\)
+
+* Mixtures of Tree Bayesian NETWORKS using EM
+\(P(X=x) = \sum^k_{i=1}p_iT_i(X=x)\)
+
+\(\sum^k_{i=1}{p_i}\)
+
+\(\theta_i = P(X, root=0|Pa(root)=Z, Z=i)\)
+
+\(p_i = \frac{\#Totalweight(Z_i = i)}{\#Totalweight} = \frac{\sum_{root=0}{\theta_i} + \sum_{root=1}{(1-\theta_i)}}{\sum^k_{m=1}{\sum_{root=0}{\theta_m}+\sum_{root=1}{1-\theta_m}}}\)
+
+\(x_1, x_2, \hat{x_3}, x_4, z=1\)
+
+\(x_1, x_2, \hat{x_3}, x_4, z=2\)
+
+\(x_1, x_2, \hat{x_3}, x_4, z=3\)
+
+\(x_1, x_2, \hat{x_3}, x_4, z=4\)
+
+\(\theta_i = \frac{\sum^m_j{Pr_{\theta}(root=0, Z^j=i|X^j)}}{\sum^m_j{Pr_{\theta}(Z^j=i|X^j)}}\)
+
+* graph
+
+#+BEGIN_COMMENT
+#+name: structure-node-table
+| *node* | *label* | *shape* | *fillcolor* |
+|    0 |     0 |       |           |
+|    1 |     1 |       |           |
+|    2 |     2 |       |           |
+|    3 |     3 |       |           |
+|    4 |     4 |       |           |
+|    5 |     5 |       |           |
+|    6 |     6 |       |           |
+|    7 |     7 |       |           |
+|    8 |     8 |       |           |
+|    9 |     9 |       |           |
+|   10 |    10 |       |           |
+|   11 |    11 |       |           |
+|   12 |    12 |       |           |
+|   13 |    13 |       |           |
+|   14 |    14 |       |           |
+|   15 |    15 |       |           |
+
+#+name: structure-graph-table
+| from | to | label | dir |
+|    0 | 15 |       |     |
+|   15 | 12 |       |     |
+|   15 | 14 |       |     |
+|   15 |  6 |       |     |
+|   15 |  8 |       |     |
+|   15 | 10 |       |     |
+|   15 | 11 |       |     |
+|   15 |  1 |       |     |
+|   15 |  7 |       |     |
+|   15 | 13 |       |     |
+|   15 |  2 |       |     |
+|   15 |  5 |       |     |
+|   15 |  9 |       |     |
+|   15 |  3 |       |     |
+|   15 |  4 |       |     |
+
+#+END_COMMENT
+
+#+name: graph-from-tables
+#+HEADER: :var nodes=structure-node-table graph=structure-graph-table
+#+BEGIN_SRC emacs-lisp :file structure-diagram.png :colnames yes :exports results
+    (org-babel-execute:dot
+     (concat
+          "digraph {\n"
+          "//rankdir=LR;\n" ;; remove comment characters '//' for horizontal layout; add for vertical layout
+          (mapconcat
+           (lambda (x)
+             (format "%s [label=\"%s\" shape=%s style=\"filled\" fillcolor=\"%s\"]"
+                             (car x)
+                             (nth 1 x)
+                             (if (string= "" (nth 2 x)) "box" (nth 2 x))
+                             (if (string= "" (nth 3 x)) "none" (nth 3 x))
+                             )) nodes "\n")
+          "\n"
+          (mapconcat
+           (lambda (x)
+             (format "%s -> %s [label=\"%s\", dir=\"%s\"]"
+                             (car x) (nth 1 x) (nth 2 x) (nth 3 x))) graph "\n")
+          "}\n") params)
+#+END_SRC

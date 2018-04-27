@@ -38,6 +38,7 @@ typedef struct edge {
 
 
 int cal_probs (struct bn *bn1);
+int cal_bagging_probs (struct bn *bn1, int *bagging_data_index, int num_data);
 double cal_log_likelihood (struct bn *bn1, struct bn *bn2);
 double cal_tree_log_likelihood (struct bn *bn1, struct bn *bn2);
 p_bn preprocess_data (ptr_doc doc1);
@@ -46,12 +47,12 @@ void free_bn_data(p_bn bn1);
 void free_bn_node(p_bn bn1);
 void free_bn_edge(p_bn bn1);
 void free_bns(p_bn *bns, int k);
-int get_maximum_weight_spanning_tree (struct bn *bn1, struct edge **edge_ptrs);
-int structure_learning (struct bn *bn1);
+int get_maximum_weight_spanning_tree (struct bn *bn1, struct edge **edge_ptrs, int a_root);
+int structure_learning (struct bn *bn1, int a_root);
 int print_tree(struct bn *bn1);
 struct bn **mixture_em(struct bn *bn1, int k);
 int cal_mixture_em_probs (struct bn *bn1);
 int cal_mixture_em_data_probs (struct bn *bn1);
 double cal_mixture_em_log_likelihood (struct bn **bns, int k, struct bn *bn2);
-
+double cal_mixture_bagging_log_likelihood(struct bn *bn1, int k, struct bn *bn2, double *lls);
 #endif /* BAYESIAN_NETWORKS_H */

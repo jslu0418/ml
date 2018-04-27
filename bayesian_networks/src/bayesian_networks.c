@@ -1,5 +1,6 @@
 #include "common.h"
 /* #define PRINTTREE */
+#define BAGGING_PORTION (2.0/3.0)
 
 /* struct of queue */
 struct ent{
@@ -62,6 +63,57 @@ cal_probs (struct bn *bn1)
   return 0;
 }
 
+int
+cal_bagging_probs (struct bn *bn1, int *bagging_data_index, int num_data)
+{
+  struct node **nodes = bn1->nodes;
+  int **data = bn1->data;
+  struct edge **edges = bn1->edges;
+  int num_node = bn1->num_node;
+  int i;
+  int j;
+  int k;
+  double prob[4];
+  double counts[num_node * 2];
+  for (j=0; j<num_node * 2; j++)
+    {
+      counts[j] = 1.0; /* add-one laplace smoothing */
+    }
+  for (i=0; i<num_data; i++)
+    {
+      for (j=0; j<num_node; j++)
+        {
+          counts[j*2 + data[bagging_data_index[i]][j]] += 1;
+          for (k=j+1; k<num_node; k++)
+            {
+              edges[j*num_node + k]->count[data[bagging_data_index[i]][j]*2+data[bagging_data_index[i]][k]] += 1;
+              edges[j*num_node + k]->sum += 1;
+            }
+        }
+    }
+  for (j=0; j<num_node; j++)
+    {
+      nodes[j]->ll_cpt[1] = log(counts[j*2 + 1]/(counts[j*2] + counts[j*2 + 1]));
+      nodes[j]->ll_cpt[0] = log(counts[j*2]/(counts[j*2] + counts[j*2 + 1]));
+    }
+  for (j=0; j<num_node; j++)
+    {
+      for (k=j+1; k<num_node; k++)
+        {
+          prob[0] = edges[j*num_node + k]->count[0]/edges[j*num_node + k]->sum;
+          prob[1] = edges[j*num_node + k]->count[1]/edges[j*num_node + k]->sum;
+          prob[2] = edges[j*num_node + k]->count[2]/edges[j*num_node + k]->sum;
+          prob[3] = edges[j*num_node + k]->count[3]/edges[j*num_node + k]->sum;
+          edges[j*num_node + k]->mi = prob[0] * (log(prob[0]) - nodes[j]->ll_cpt[0] - nodes[k]->ll_cpt[0]) \
+          + prob[1] * (log(prob[1]) - nodes[j]->ll_cpt[0] - nodes[k]->ll_cpt[1]) \
+          + prob[2] * (log(prob[2]) - nodes[j]->ll_cpt[1] - nodes[k]->ll_cpt[0]) \
+          + prob[3] * (log(prob[3]) - nodes[j]->ll_cpt[1] - nodes[k]->ll_cpt[1]);
+          /* printf("%d:%d, %f\n", j, k, edges[j*num_node + k]->mi); */
+        }
+      /* printf("%f, %f\n", nodes[j]->ll_cpt[1], nodes[j]->ll_cpt[0]); */
+    }
+  return 0;
+}
 
 /* only different between this and cal_probs is count is add with P_k(i) */
 int
@@ -110,7 +162,7 @@ cal_mixture_em_probs (struct bn *bn1)
           prob[1] = edges[j*num_node + k]->count[1]/edges[j*num_node + k]->sum;
           prob[2] = edges[j*num_node + k]->count[2]/edges[j*num_node + k]->sum;
           prob[3] = edges[j*num_node + k]->count[3]/edges[j*num_node + k]->sum;
-          edges[j*num_node + k]->mi += prob[0] * (log(prob[0]) - nodes[j]->ll_cpt[0] - nodes[k]->ll_cpt[0]);
+          edges[j*num_node + k]->mi = prob[0] * (log(prob[0]) - nodes[j]->ll_cpt[0] - nodes[k]->ll_cpt[0]);
           edges[j*num_node + k]->mi += prob[1] * (log(prob[1]) - nodes[j]->ll_cpt[0] - nodes[k]->ll_cpt[1]);
           edges[j*num_node + k]->mi += prob[2] * (log(prob[2]) - nodes[j]->ll_cpt[1] - nodes[k]->ll_cpt[0]);
           edges[j*num_node + k]->mi += prob[3] * (log(prob[3]) - nodes[j]->ll_cpt[1] - nodes[k]->ll_cpt[1]);
@@ -173,9 +225,10 @@ mixture_em(struct bn *bn1, int k)
   srand(time(NULL));
   for (i=0; i<k; i++)
     {
-      weights[i] = rand()%(k*k*k);
+      weights[i] = rand()%(k*k*k) + 1;
       bns[i] = calloc(1, sizeof(struct bn));
       bns[i]->data = bn1->data;
+      bns[i]->num_node = num_node;
       bns[i]->num_data = bn1->num_data;
       bns[i]->gamma = calloc(bn1->num_data, sizeof(double));
       bns[i]->nodes = calloc(num_node, sizeof(struct node*));
@@ -187,19 +240,19 @@ mixture_em(struct bn *bn1, int k)
       weights[i] = weights[i]/sum_weights;
       bns[i]->weight = weights[i];
     }
-  struct edge **edge_ptrs = calloc((num_node * (num_node-1)) / 2, sizeof(struct edge*));
-  m = 0;
-  for (i=0; i<num_node; i++)
-    for (j=i+1; j<num_node; j++)
-      {
-        edge_ptrs[m] = edges[i*num_node+j];
-        m++;
-      }
-  qsort((void *)edge_ptrs, (num_node*(num_node-1)) /2, sizeof(struct edge*), &edge_sort);
-  /* initialize the model, generate K trees depends on the same P */
-  /* This will set the nodes and edges to the same for all bns[i] */
-  get_maximum_weight_spanning_tree(bn1, edge_ptrs);
-  free(edge_ptrs);
+  /* struct edge **edge_ptrs = calloc((num_node * (num_node-1)) / 2, sizeof(struct edge*)); */
+  /* m = 0; */
+  /* for (i=0; i<num_node; i++) */
+  /*   for (j=i+1; j<num_node; j++) */
+  /*     { */
+  /*       edge_ptrs[m] = edges[i*num_node+j]; */
+  /*       m++; */
+  /*     } */
+  /* qsort((void *)edge_ptrs, (num_node*(num_node-1)) /2, sizeof(struct edge*), &edge_sort); */
+  /* /\* initialize the model, generate K trees depends on the same P *\/ */
+  /* /\* This will set the nodes and edges to the same for all bns[i] *\/ */
+  /* get_maximum_weight_spanning_tree(bn1, edge_ptrs); */
+  /* free(edge_ptrs); */
   for (i=0; i<k; i++)
     {
       for (m=0; m<num_node; m++)
@@ -208,10 +261,6 @@ mixture_em(struct bn *bn1, int k)
           bns[i]->nodes[m]->node_num = m;
           bns[i]->nodes[m]->ll_cpt[0] = bn1->nodes[m]->ll_cpt[0];
           bns[i]->nodes[m]->ll_cpt[1] = bn1->nodes[m]->ll_cpt[1];
-          bns[i]->nodes[m]->ll_xipa_cpt[0] = bn1->nodes[m]->ll_xipa_cpt[0];
-          bns[i]->nodes[m]->ll_xipa_cpt[1] = bn1->nodes[m]->ll_xipa_cpt[1];
-          bns[i]->nodes[m]->ll_xipa_cpt[2] = bn1->nodes[m]->ll_xipa_cpt[2];
-          bns[i]->nodes[m]->ll_xipa_cpt[3] = bn1->nodes[m]->ll_xipa_cpt[3];
         }
       /* start initialize all node struct */
       for (n=0; n<num_node; n++)
@@ -219,15 +268,20 @@ mixture_em(struct bn *bn1, int k)
           for (m=n+1; m<num_node; m++)
             {
               bns[i]->edges[n*num_node+m] = calloc(1, sizeof(struct edge));
-              bns[i]->edges[n*num_node+m]->count[0]=1;
-              bns[i]->edges[n*num_node+m]->count[1]=1;
-              bns[i]->edges[n*num_node+m]->count[2]=1;
-              bns[i]->edges[n*num_node+m]->count[3]=1;
-              bns[i]->edges[n*num_node+m]->sum = 4;
+              bns[i]->edges[n*num_node+m]->count[0]=bn1->edges[n*num_node+m]->count[0];
+              bns[i]->edges[n*num_node+m]->count[1]=bn1->edges[n*num_node+m]->count[1];
+              bns[i]->edges[n*num_node+m]->count[2]=bn1->edges[n*num_node+m]->count[2];
+              bns[i]->edges[n*num_node+m]->count[3]=bn1->edges[n*num_node+m]->count[3];
+              bns[i]->edges[n*num_node+m]->sum = bn1->edges[n*num_node+m]->sum;
               bns[i]->edges[n*num_node+m]->from = n;
               bns[i]->edges[n*num_node+m]->to = m;
+              bns[i]->edges[n*num_node+m]->mi = bn1->edges[n*num_node+m]->mi;
             }
         }
+    }
+  for (i=0; i<k; i++)
+    {
+      structure_learning(bns[i], i%num_node);
     }
   j = 0;
   while (j<100)
@@ -263,7 +317,7 @@ mixture_em(struct bn *bn1, int k)
       for (i=0; i<k; i++)
         {
           weights[i] = weights[i]/sum_weights;
-          printf("%d: %lf, %lf\n", j, bns[i]->weight, weights[i]);
+          /* printf("%d: %lf, %lf\n", j, bns[i]->weight, weights[i]); */
           if ((bns[i]->weight - weights[i] > 0 && bns[i]->weight - weights[i] > 0.000001)||(bns[i]->weight - weights[i] < 0 && bns[i]->weight - weights[i] < -0.000001))
             {
               stop = 0;
@@ -275,7 +329,7 @@ mixture_em(struct bn *bn1, int k)
           for (i=0; i<k; i++)
             {
               cal_mixture_em_probs(bns[i]);
-              structure_learning(bns[i]);
+              structure_learning(bns[i], 0);
               /* reset count */
               for(n=0;n<num_node;n++)
                 for(m=n+1;m<num_node;m++)
@@ -287,6 +341,7 @@ mixture_em(struct bn *bn1, int k)
                     bns[i]->edges[n*num_node+m]->sum = 4;
                     bns[i]->edges[n*num_node+m]->from = n;
                     bns[i]->edges[n*num_node+m]->to = m;
+                    bns[i]->edges[n*num_node+m]->mi = 0.0;
                   }
             }
         }
@@ -337,8 +392,92 @@ cal_mixture_em_log_likelihood (struct bn **bns, int k, struct bn *bn2)
   return ll;
 }
 
+double
+cal_mixture_bagging_log_likelihood(struct bn *bn1, int k, struct bn *bn2, double *lls)
+{
+  int num_node = bn1->num_node;
+  int num_data = bn1->num_data;
+  struct node **nodes = bn1->nodes;
+  int **data = bn2->data;
+  int bagging_num_data = num_data * BAGGING_PORTION;
+  int i,j,m;
+  int *bagging_data_index = calloc (bagging_num_data, sizeof(int));
+  double weights[k];
+  for(m=0; m<k; m++)
+    {
+      weights[m] = log(lls[m]);
+    }
+  double ll_sum[bn2->num_data];
+  double ll_sum_nw[bn2->num_data];
+  double ll = 0.0;
+  double ll_nw = 0.0;
+  double max;
+  for (i=0; i<bn2->num_data; i++)
+    ll_sum[i] = ll_sum_nw[i] = 0.0;
+  srand(time(NULL));
+  for(m=0; m<k; m++)
+    {
+      lls[m] = 0.0;
+      for(i=0;i<bagging_num_data;i++)
+        {
+          bagging_data_index[i] = rand()%num_data;
+        }
+      for(i=0;i<num_node;i++)
+        for(j=i+1;j<num_node;j++)
+          {
+            bn1->edges[i*num_node+j]->count[0]=1;
+            bn1->edges[i*num_node+j]->count[1]=1;
+            bn1->edges[i*num_node+j]->count[2]=1;
+            bn1->edges[i*num_node+j]->count[3]=1;
+            bn1->edges[i*num_node+j]->sum = 4;
+            bn1->edges[i*num_node+j]->from = i;
+            bn1->edges[i*num_node+j]->to = j;
+            bn1->edges[i*num_node+j]->mi = 0;
+          }
+      cal_bagging_probs(bn1, bagging_data_index, bagging_num_data);
+      structure_learning(bn1, 0);
+      lls[m] = cal_tree_log_likelihood(bn1, bn2);
+      /* # This is for preventing inf # */
+      /* for (i=0; i<bn2->num_data; i++) */
+      /*   { */
+      /*     for (j=0; j<num_node; j++) */
+      /*       { */
+      /*         lls[m] += nodes[j]->ll_xipa_cpt[data[i][j]*2 + data[i][nodes[j]->pa]]; */
+      /*         ll_sum_nw[i] += exp(nodes[j]->ll_xipa_cpt[data[i][j]*2 + data[i][nodes[j]->pa]]); */
+      /*         ll_sum[i] += exp(nodes[j]->ll_xipa_cpt[data[i][j]*2 + data[i][nodes[j]->pa]]) * weights[m]; */
+      /*       } */
+      /*   } */
+    }
+  /* for(i=0; i<bn2->num_data; i++) */
+  /*   { */
+  /*     ll += log(ll_sum[i]); */
+  /*     ll_nw += log(ll_sum_nw[i]); */
+  /*   } */
+  for(m=0; m<k; m++)
+    {
+      if(m==0)
+        max = lls[m];
+      else
+        {
+          if (max < lls[m])
+            max = lls[m];
+        }
+    }
+  for(m=0; m<k; m++)
+    {
+      ll += exp(lls[m] - max);
+    }
+  ll += max;
+  for(m=0; m<k; m++)
+    {
+      lls[m] = exp(lls[m] - ll);
+    }
+  free(bagging_data_index);
+  return ll;
+}
+
 int
-structure_learning (struct bn *bn1)
+structure_learning (struct bn *bn1, int a_root)
 {
   struct edge **edges = bn1->edges;
   int num_node = bn1->num_node;
@@ -353,13 +492,13 @@ structure_learning (struct bn *bn1)
   qsort((void *)edge_ptrs, (num_node*(num_node-1)) /2, sizeof(struct edge*), &edge_sort);
   /* for (k=0; k<(num_node*(num_node-1)) /2; k++) */
   /*   printf("%d,%d: %f\n", edge_ptrs[k]->from, edge_ptrs[k]->to, edge_ptrs[k]->mi); */
-  get_maximum_weight_spanning_tree(bn1, edge_ptrs);
+  get_maximum_weight_spanning_tree(bn1, edge_ptrs, a_root);
   free(edge_ptrs);
   return 0;
 }
 
 int
-get_maximum_weight_spanning_tree (struct bn *bn1, struct edge **edge_ptrs)
+get_maximum_weight_spanning_tree (struct bn *bn1, struct edge **edge_ptrs, int a_root)
 {
   struct node **nodes = bn1->nodes;
   int num_node = bn1->num_node;
@@ -430,7 +569,7 @@ get_maximum_weight_spanning_tree (struct bn *bn1, struct edge **edge_ptrs)
   struct ent *e;
   e = calloc(1, sizeof(struct ent));
   srand(time(NULL));
-  bn1->root = 0;
+  bn1->root = a_root;
   e->n = nodes[bn1->root];
   CIRCLEQ_INSERT_TAIL(&cqhead, e, entries);
   struct node *x;
@@ -493,6 +632,8 @@ get_maximum_weight_spanning_tree (struct bn *bn1, struct edge **edge_ptrs)
   free(tree_edges);
   return 0;
 }
+
+
 
 int
 print_tree(struct bn *bn1)
@@ -666,6 +807,7 @@ free_bn_data(struct bn *bn1)
   for(j=0;j<bn1->num_data;j++)
     free(bn1->data[j]);
   free(bn1->data);
+  bn1->data = NULL;
 }
 
 void
@@ -688,6 +830,7 @@ free_bn_node(struct bn *bn1)
       free(bn1->nodes[i]);
     }
   free(bn1->nodes);
+  bn1->nodes = NULL;
 }
 
 void
@@ -698,4 +841,5 @@ free_bn_edge(struct bn *bn1)
     for (j=i+1; j<bn1->num_node; j++)
       free(bn1->edges[i*bn1->num_node+j]);
   free(bn1->edges);
+  bn1->edges = NULL;
 }

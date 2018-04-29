@@ -437,10 +437,10 @@ Copyright (C) 2012 Free Software Foundation, Inc.
 This config.status script is free software; the Free Software Foundation
 gives unlimited permission to copy, distribute and modify it."
 
-ac_pwd='/home/012/j/jx/jxl173630/CS6375/ml/bayesian_networks'
+ac_pwd='/Users/judy/GraduateStudy/UTD/Spring2018/CS6375.502-MachineLearning/Homeworks/ml/bayesian_networks'
 srcdir='.'
 INSTALL='/usr/bin/install -c'
-MKDIR_P='/usr/bin/mkdir -p'
+MKDIR_P='./install-sh -c -d'
 AWK='gawk'
 test -n "$AWK" || AWK=awk
 # The default lists apply if the user does not specify any file.
@@ -650,15 +650,15 @@ S["am__leading_dot"]="."
 S["SET_MAKE"]=""
 S["AWK"]="gawk"
 S["mkdir_p"]="$(MKDIR_P)"
-S["MKDIR_P"]="/usr/bin/mkdir -p"
+S["MKDIR_P"]="./install-sh -c -d"
 S["INSTALL_STRIP_PROGRAM"]="$(install_sh) -c -s"
 S["STRIP"]=""
-S["install_sh"]="${SHELL} /home/012/j/jx/jxl173630/CS6375/ml/bayesian_networks/install-sh"
-S["MAKEINFO"]="${SHELL} /home/012/j/jx/jxl173630/CS6375/ml/bayesian_networks/missing makeinfo"
-S["AUTOHEADER"]="${SHELL} /home/012/j/jx/jxl173630/CS6375/ml/bayesian_networks/missing autoheader"
-S["AUTOMAKE"]="${SHELL} /home/012/j/jx/jxl173630/CS6375/ml/bayesian_networks/missing automake-1.13"
-S["AUTOCONF"]="${SHELL} /home/012/j/jx/jxl173630/CS6375/ml/bayesian_networks/missing autoconf"
-S["ACLOCAL"]="${SHELL} /home/012/j/jx/jxl173630/CS6375/ml/bayesian_networks/missing aclocal-1.13"
+S["install_sh"]="${SHELL} /Users/judy/GraduateStudy/UTD/Spring2018/CS6375.502-MachineLearning/Homeworks/ml/bayesian_networks/install-sh"
+S["MAKEINFO"]="${SHELL} /Users/judy/GraduateStudy/UTD/Spring2018/CS6375.502-MachineLearning/Homeworks/ml/bayesian_networks/missing makeinfo"
+S["AUTOHEADER"]="${SHELL} /Users/judy/GraduateStudy/UTD/Spring2018/CS6375.502-MachineLearning/Homeworks/ml/bayesian_networks/missing autoheader"
+S["AUTOMAKE"]="${SHELL} /Users/judy/GraduateStudy/UTD/Spring2018/CS6375.502-MachineLearning/Homeworks/ml/bayesian_networks/missing automake-1.13"
+S["AUTOCONF"]="${SHELL} /Users/judy/GraduateStudy/UTD/Spring2018/CS6375.502-MachineLearning/Homeworks/ml/bayesian_networks/missing autoconf"
+S["ACLOCAL"]="${SHELL} /Users/judy/GraduateStudy/UTD/Spring2018/CS6375.502-MachineLearning/Homeworks/ml/bayesian_networks/missing aclocal-1.13"
 S["VERSION"]="VERSION"
 S["PACKAGE"]="full-package-name"
 S["CYGPATH_W"]="echo"
@@ -671,8 +671,8 @@ S["host_alias"]=""
 S["build_alias"]=""
 S["LIBS"]="-lm "
 S["ECHO_T"]=""
-S["ECHO_N"]="-n"
-S["ECHO_C"]=""
+S["ECHO_N"]=""
+S["ECHO_C"]="\\c"
 S["DEFS"]="-DHAVE_CONFIG_H"
 S["mandir"]="${datarootdir}/man"
 S["localedir"]="${datarootdir}/locale"

@@ -211,7 +211,6 @@ edge_sort(const void *e1, const void *e2)
 struct bn **
 mixture_em(struct bn *bn1, int k)
 {
-  struct edge **edges = bn1->edges;
   int num_node = bn1->num_node;
   int num_data = bn1->num_data;
   struct bn **bns = calloc (k, sizeof(struct bn *));
@@ -240,19 +239,7 @@ mixture_em(struct bn *bn1, int k)
       weights[i] = weights[i]/sum_weights;
       bns[i]->weight = weights[i];
     }
-  /* struct edge **edge_ptrs = calloc((num_node * (num_node-1)) / 2, sizeof(struct edge*)); */
-  /* m = 0; */
-  /* for (i=0; i<num_node; i++) */
-  /*   for (j=i+1; j<num_node; j++) */
-  /*     { */
-  /*       edge_ptrs[m] = edges[i*num_node+j]; */
-  /*       m++; */
-  /*     } */
-  /* qsort((void *)edge_ptrs, (num_node*(num_node-1)) /2, sizeof(struct edge*), &edge_sort); */
-  /* /\* initialize the model, generate K trees depends on the same P *\/ */
-  /* /\* This will set the nodes and edges to the same for all bns[i] *\/ */
-  /* get_maximum_weight_spanning_tree(bn1, edge_ptrs); */
-  /* free(edge_ptrs); */
+
   for (i=0; i<k; i++)
     {
       for (m=0; m<num_node; m++)
@@ -268,21 +255,41 @@ mixture_em(struct bn *bn1, int k)
           for (m=n+1; m<num_node; m++)
             {
               bns[i]->edges[n*num_node+m] = calloc(1, sizeof(struct edge));
-              bns[i]->edges[n*num_node+m]->count[0]=bn1->edges[n*num_node+m]->count[0];
-              bns[i]->edges[n*num_node+m]->count[1]=bn1->edges[n*num_node+m]->count[1];
-              bns[i]->edges[n*num_node+m]->count[2]=bn1->edges[n*num_node+m]->count[2];
-              bns[i]->edges[n*num_node+m]->count[3]=bn1->edges[n*num_node+m]->count[3];
-              bns[i]->edges[n*num_node+m]->sum = bn1->edges[n*num_node+m]->sum;
+              bns[i]->edges[n*num_node+m]->count[0]=1;
+              bns[i]->edges[n*num_node+m]->count[1]=1;
+              bns[i]->edges[n*num_node+m]->count[2]=1;
+              bns[i]->edges[n*num_node+m]->count[3]=1;
+              bns[i]->edges[n*num_node+m]->sum = 4;
               bns[i]->edges[n*num_node+m]->from = n;
               bns[i]->edges[n*num_node+m]->to = m;
-              bns[i]->edges[n*num_node+m]->mi = bn1->edges[n*num_node+m]->mi;
+              bns[i]->edges[n*num_node+m]->mi = 0.0;
             }
         }
     }
+  int bagging_num_data = num_data * BAGGING_PORTION;
+  int *bagging_data_index = calloc (bagging_num_data, sizeof(int));
   for (i=0; i<k; i++)
     {
-      structure_learning(bns[i], i%num_node);
+      for(j=0;j<bagging_num_data;j++)
+        {
+          bagging_data_index[j] = rand()%num_data;
+        }
+      cal_bagging_probs(bns[i], bagging_data_index, bagging_num_data);
+      structure_learning(bns[i], 0);
+      for(n=0;n<num_node;n++)
+        for(m=n+1;m<num_node;m++)
+          {
+            bns[i]->edges[n*num_node+m]->count[0]=1;
+            bns[i]->edges[n*num_node+m]->count[1]=1;
+            bns[i]->edges[n*num_node+m]->count[2]=1;
+            bns[i]->edges[n*num_node+m]->count[3]=1;
+            bns[i]->edges[n*num_node+m]->sum = 4;
+            bns[i]->edges[n*num_node+m]->from = n;
+            bns[i]->edges[n*num_node+m]->to = m;
+            bns[i]->edges[n*num_node+m]->mi = 0.0;
+          }
     }
+  free(bagging_data_index);
   j = 0;
   while (j<100)
     {

@@ -18,7 +18,28 @@ main (int argc, char **argv)
   int ik;
   int flag[4];
   memset((void *)flag, 0, 4*sizeof(int));
-  int opt;
+  char opt;
+  if (argc > 2)
+    {
+      opt = argv[2][1];
+      switch(opt)
+        {
+        case 'a':
+          flag[0] = 1;
+          break;
+        case 'b':
+          flag[1] = 1;
+          break;
+        case 'c':
+          flag[2] = 1;
+          break;
+        case 'd':
+          flag[3] = 1;
+          break;
+        default:
+          break;
+        }
+    }
   while ((opt = getopt(argc, argv, "abcd")) != -1)
     {
       switch(opt)

@@ -69,6 +69,7 @@ main (int argc, char **argv)
   double *lls = calloc(100, sizeof(double));
   double maxll;
   int maxk;
+  int iks[6] = {0,2,5,10,15,20};
   double weights[100];
   while (strcmp(filenames[i], "") != 0)
     {
@@ -143,9 +144,9 @@ main (int argc, char **argv)
               k = 5;
               if (flag[2] == 1)
                 {
-                  for(ik=1; ik<41; ik++)
+                  for(ik=1; ik<6; ik++)
                     {
-                      k = ik;
+                      k = iks[ik];
                       for (j=0; j<k; j++)
                         {
                           lls[j] = 1/k;
@@ -177,15 +178,15 @@ main (int argc, char **argv)
                 }
               if (flag[3] == 1)
                 {
-                  for(ik=1; ik<41; ik++)
+                  for(ik=1; ik<6; ik++)
                     {
-                      k = ik;
+                      k = iks[ik];
                       for (j=0; j<k; j++)
                         {
                           lls[j] = 1/k;
                         }
                       ll = cal_mixture_bagging_log_likelihood(bn1, k, bn3, lls);
-                      printf("Mixture Chow-Liu Tree using Bagging Log likelihood on Valid Data: %f\n", ll);
+                      printf("Mixture Chow-Liu Tree using Bagging Log likelihood on Valid Data: %f K: %d\n", ll, k);
                       fflush(stdout);
                       if(ik == 1)
                         {
@@ -203,7 +204,7 @@ main (int argc, char **argv)
                     }
                   free_bn(bn3);
                   ll = cal_mixture_bagging_log_likelihood(bn1, maxk, bn2, lls);
-                  printf("Mixture Chow-Liu Tree using Bagging Log likelihood: %f\n", ll);
+                  printf("Mixture Chow-Liu Tree using Bagging Log likelihood with Best K (%d): %f\n", maxk, ll);
                   fflush(stdout);
                 }
             }

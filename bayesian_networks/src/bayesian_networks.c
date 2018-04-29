@@ -138,7 +138,7 @@ cal_mixture_em_probs (struct bn *bn1)
     }
   for (i=0; i<num_data; i++)
     {
-      cur_gamma = gamma[i]/sum_gamma;
+      cur_gamma = gamma[i];
       for (j=0; j<num_node; j++)
         {
           counts[j*2 + data[i][j]] += cur_gamma;
@@ -263,6 +263,14 @@ mixture_em(struct bn *bn1, int k)
               bns[i]->edges[n*num_node+m]->from = n;
               bns[i]->edges[n*num_node+m]->to = m;
               bns[i]->edges[n*num_node+m]->mi = 0.0;
+              /* bns[i]->edges[n*num_node+m]->count[0]=bn1->edges[n*num_node+m]->count[0]; */
+              /* bns[i]->edges[n*num_node+m]->count[1]=bn1->edges[n*num_node+m]->count[1]; */
+              /* bns[i]->edges[n*num_node+m]->count[2]=bn1->edges[n*num_node+m]->count[2]; */
+              /* bns[i]->edges[n*num_node+m]->count[3]=bn1->edges[n*num_node+m]->count[3]; */
+              /* bns[i]->edges[n*num_node+m]->sum = bn1->edges[n*num_node+m]->sum; */
+              /* bns[i]->edges[n*num_node+m]->from = n; */
+              /* bns[i]->edges[n*num_node+m]->to = m; */
+              /* bns[i]->edges[n*num_node+m]->mi = bn1->edges[n*num_node+m]->mi; */
             }
         }
     }
@@ -290,6 +298,10 @@ mixture_em(struct bn *bn1, int k)
           }
     }
   free(bagging_data_index);
+  /* for (i=0; i<k; i++) */
+  /*   { */
+  /*     structure_learning(bns[i], i%num_node); */
+  /*   } */
   j = 0;
   while (j<100)
     {
